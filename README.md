@@ -15,19 +15,19 @@
 
 ## 安装命令
 
-Mac：
+Mac终端输入：
 
 ```bash
 npx -y skills add Grace-han52/cclean-skill -g --all
 ```
 
-Windows：
+Windows终端输入：
 
 ```powershell
 npx.cmd -y skills add Grace-han52/cclean-skill -g --all
 ```
 
-安装后重启或刷新你的 AI 编程工具。
+安装后重启或刷新你的 AI 编程工具（codex、claude code等）。
 
 ## 调用方式
 
