@@ -21,7 +21,7 @@
 npx -y skills add Grace-han52/cclean-skill -g --all
 ```
 
-安装后重启或刷新你的 AI 编程工具。
+安装后重启或刷新你的 codex  /claude code 或其他 AI 编程工具。
 
 ## 调用方式
 
