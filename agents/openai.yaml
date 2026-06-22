@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cclean Skill"
+  short_description: "Scan and safely clean large C drive user files."
+  default_prompt: "/ccs"
