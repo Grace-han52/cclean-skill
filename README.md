@@ -15,13 +15,13 @@
 
 ## 安装命令
 
-在 PowerShell 中运行：
+在终端中运行：
 
-```powershell
-python "$env:USERPROFILE\.codex\skills\.system\skill-installer\scripts\install-skill-from-github.py" --repo Grace-han52/cclean-skill --path . --name cclean-skill
+```bash
+npx -y skills add Grace-han52/cclean-skill -g --all
 ```
 
-安装后重启 Codex。
+安装后重启或刷新你的 AI 编程工具。
 
 ## 调用方式
 
