@@ -7,13 +7,16 @@
 - `C:\Users` 下占用空间较大的文件夹
 - `C:\Program Files` 下占用空间较大的软件目录
 - `C:\Program Files (x86)` 下占用空间较大的软件目录
+- `C:\ProgramData` 下的软件公共数据和缓存
+- `C:\Windows`、Windows 更新缓存、日志、组件存储等系统级占用
+- `pagefile.sys`、`swapfile.sys`、`hiberfil.sys` 等系统托管文件
 - `Downloads` 里的安装包，例如 `.exe`、`.msi`
 - WPS 云盘、本地缓存和离线文件
 - 微信 / xwechat 聊天文件、图片、视频和缓存
 - `AppData` 临时文件、软件缓存、崩溃日志
 - conda、pip、npm 等开发工具缓存和环境
 
-默认只做只读扫描。任何删除动作都必须先展示路径、大小、风险和可能丢失的内容，并在用户明确同意后才能执行。`Program Files` 里的软件目录默认不直接删除，优先建议卸载或使用软件自带清理功能。
+默认只做只读扫描。任何删除动作都必须先展示路径、大小、风险和可能丢失的内容，并在用户明确同意后才能执行。`Program Files`、`Windows`、`ProgramData` 和系统托管文件默认不直接删除，优先建议卸载、Windows 存储设置、磁盘清理、DISM 或软件自带清理功能。
 
 ## 安装命令
 

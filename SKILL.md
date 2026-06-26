@@ -1,6 +1,6 @@
 ---
 name: cclean-skill
-description: Safely scan and clean Windows C drive storage across C:\Users, C:\Program Files, and C:\Program Files (x86), especially Downloads installers, WPS Cloud Files, WeChat/xwechat files, AppData caches, conda/pip/npm caches, app caches, leftover application folders, and other large folders. Use when a user types /ccs, asks to free disk space, find what occupies C drive, decide what can be deleted, or clean Windows storage while requiring explicit user confirmation before deleting any file or folder.
+description: Safely scan and clean Windows C drive storage across C:\Users, C:\Program Files, C:\Program Files (x86), C:\ProgramData, C:\Windows system storage, pagefile/swap/hibernation files, Windows Update caches, Downloads installers, WPS Cloud Files, WeChat/xwechat files, AppData caches, conda/pip/npm caches, app caches, leftover application folders, and other large folders. Use when a user types /ccs, asks to free disk space, find what occupies C drive, decide what can be deleted, or clean Windows storage while requiring explicit user confirmation before deleting any file or folder.
 ---
 
 # Cclean Skill
@@ -17,23 +17,30 @@ Treat this as a safety-first cleanup workflow for Windows user storage.
 - Prefer app-native cleanup commands for app-managed data: WeChat storage manager, WPS cloud cache cleanup, Baidu Netdisk cleanup, browser cache settings, `conda clean --all`, `conda env remove -n <env>`, `pip cache purge`, and `npm cache clean --force`.
 - Never directly delete broad system, program, or profile folders such as `C:\Users`, `C:\Program Files`, `C:\Program Files (x86)`, a whole user profile, `AppData`, `AppData\Local\Microsoft`, `AppData\Local\Packages`, `ProgramData`, `All Users`, `Default`, `Default User`, `Public`, `Documents`, `Desktop`, `Pictures`, or `Videos`.
 - Treat `Program Files` and `Program Files (x86)` as installed-application territory. Report large app folders, but prefer uninstallers, Windows Apps & features, vendor cleanup tools, or targeted app cache cleanup over direct folder deletion.
+- Treat `C:\Windows`, `C:\ProgramData`, `pagefile.sys`, `swapfile.sys`, `hiberfil.sys`, `C:\Windows\WinSxS`, and `C:\Windows\Installer` as report-only by default. Recommend Windows Storage settings, Disk Cleanup, DISM, power settings, or app uninstallers instead of manual deletion.
 
 ## Workflow
 
-1. Identify the target root. By default, scan `C:\Users`, `C:\Program Files`, and `C:\Program Files (x86)`, or scan the path the user gives.
+1. Identify the target root. By default, scan `C:\Users`, `C:\Program Files`, `C:\Program Files (x86)`, `C:\ProgramData`, and system-level C drive storage indicators such as `C:\Windows`, Windows update caches, pagefile/swap/hibernation files, and installer caches. If the user gives a path, scan that path plus system indicators unless they explicitly ask not to.
 2. Run the bundled read-only scanner:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File "<skill-dir>\scripts\scan-c-users.ps1" -MinGB 0.1
 ```
 
-3. If the user is focused on a specific folder, inspect that folder before recommending deletion:
+3. For an expensive deep system-size pass, use this only when the user explicitly asks why C drive usage is much larger than the normal scan explains:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "<skill-dir>\scripts\scan-c-users.ps1" -MinGB 0.5 -DeepSystemSize $true
+```
+
+4. If the user is focused on a specific folder, inspect that folder before recommending deletion:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File "<skill-dir>\scripts\scan-c-users.ps1" -Root "C:\Users\Lenovo\WPS Cloud Files\.306382235" -MinGB 0.01
 ```
 
-4. Present a concise table with:
+5. Present a concise table with:
 
 - path or group
 - size in GB
@@ -42,9 +49,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "<skill-dir>\scripts\scan-c-
 - risk level
 - recommended action
 
-5. Ask the user what to delete. For medium or high risk targets, ask about backup/sync status first.
-6. Delete only after explicit approval. If deletion is approved, close related apps first when relevant and prefer deleting contents of cache folders over deleting parent account or profile folders.
-7. Re-scan after cleanup and report space recovered.
+6. Ask the user what to delete. For medium or high risk targets, ask about backup/sync status first.
+7. Delete only after explicit approval. If deletion is approved, close related apps first when relevant and prefer deleting contents of cache folders over deleting parent account or profile folders.
+8. Re-scan after cleanup and report space recovered.
 
 ## Common Decisions
 
@@ -60,6 +67,12 @@ Use these defaults when explaining recommendations:
 - Baidu Netdisk, Lark/Feishu, DingTalk, Tencent Meeting, browser folders, JetBrains folders: app data and caches. Prefer app-native cache cleanup or targeted cache folders, not entire app data folders.
 - `C:\Program Files` and `C:\Program Files (x86)`: installed programs and shared runtime files. Do not delete top-level app folders just because they are large. Recommend Windows uninstall, vendor uninstallers, or app-native cleanup. Only consider deleting leftovers after confirming the app was uninstalled and the exact folder is no longer needed.
 - Cache/log/temp folders under an installed app directory: medium risk. Ask first, close the app, and prefer app-native cleanup when available.
+- `C:\Windows`: system files. Do not delete manually. Default scans report common cleanup candidates and system files; use `-DeepSystemSize $true` only for slower explanatory sizing. For component store cleanup, recommend an elevated terminal with `Dism.exe /Online /Cleanup-Image /AnalyzeComponentStore` first, then `Dism.exe /Online /Cleanup-Image /StartComponentCleanup` only after confirmation.
+- `C:\Windows\SoftwareDistribution\Download`: Windows Update download cache. Prefer Windows Storage settings or Disk Cleanup. Manual deletion requires stopping update services and explicit confirmation.
+- `C:\Windows\WinSxS`: Windows component store. Never delete manually.
+- `C:\Windows\Installer`: Windows Installer cache. Never delete manually.
+- `C:\ProgramData`: shared app data. Inspect subfolders and prefer app cleanup or uninstallers. `Package Cache` may affect repair/uninstall and requires explicit warning.
+- `pagefile.sys`, `swapfile.sys`, `hiberfil.sys`: Windows-managed files. Do not delete directly; use virtual memory or hibernation settings such as `powercfg /hibernate off` only if the user understands the tradeoff.
 
 ## Deletion Confirmation Standard
 
