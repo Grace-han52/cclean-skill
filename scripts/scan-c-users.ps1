@@ -1,5 +1,7 @@
 param(
     [string[]]$Root,
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$AdditionalRoot,
     [double]$MinGB = 0.1,
     [int]$Top = 50
 )
@@ -102,6 +104,10 @@ function New-ReportRow {
         Contents = $advice[2]
         Path = $Path
     }
+}
+
+if ($AdditionalRoot -and $AdditionalRoot.Count -gt 0) {
+    $Root = @($Root) + @($AdditionalRoot)
 }
 
 if (-not $Root -or $Root.Count -eq 0) {
