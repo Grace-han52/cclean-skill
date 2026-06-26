@@ -1,6 +1,6 @@
 ---
 name: cclean-skill
-description: Safely scan and clean Windows C drive user storage, especially C:\Users, Downloads installers, WPS Cloud Files, WeChat/xwechat files, AppData caches, conda/pip/npm caches, and other large user folders. Use when a user types /ccs, asks to free disk space, find what occupies C drive, decide what can be deleted, or clean C:\Users while requiring explicit user confirmation before deleting any file or folder.
+description: Safely scan and clean Windows C drive storage across C:\Users, C:\Program Files, and C:\Program Files (x86), especially Downloads installers, WPS Cloud Files, WeChat/xwechat files, AppData caches, conda/pip/npm caches, app caches, leftover application folders, and other large folders. Use when a user types /ccs, asks to free disk space, find what occupies C drive, decide what can be deleted, or clean Windows storage while requiring explicit user confirmation before deleting any file or folder.
 ---
 
 # Cclean Skill
@@ -15,15 +15,16 @@ Treat this as a safety-first cleanup workflow for Windows user storage.
 - Ask for explicit confirmation before every deletion action. The user must name or clearly approve the exact path or file group to delete in the current conversation.
 - Warn before deleting anything that may contain personal files, chat attachments, cloud sync data, unsynced files, development environments, browser profiles, or app configuration.
 - Prefer app-native cleanup commands for app-managed data: WeChat storage manager, WPS cloud cache cleanup, Baidu Netdisk cleanup, browser cache settings, `conda clean --all`, `conda env remove -n <env>`, `pip cache purge`, and `npm cache clean --force`.
-- Never directly delete broad system or profile folders such as `C:\Users`, a whole user profile, `AppData`, `AppData\Local\Microsoft`, `AppData\Local\Packages`, `ProgramData`, `All Users`, `Default`, `Default User`, `Public`, `Documents`, `Desktop`, `Pictures`, or `Videos`.
+- Never directly delete broad system, program, or profile folders such as `C:\Users`, `C:\Program Files`, `C:\Program Files (x86)`, a whole user profile, `AppData`, `AppData\Local\Microsoft`, `AppData\Local\Packages`, `ProgramData`, `All Users`, `Default`, `Default User`, `Public`, `Documents`, `Desktop`, `Pictures`, or `Videos`.
+- Treat `Program Files` and `Program Files (x86)` as installed-application territory. Report large app folders, but prefer uninstallers, Windows Apps & features, vendor cleanup tools, or targeted app cache cleanup over direct folder deletion.
 
 ## Workflow
 
-1. Identify the target root. Use `C:\Users` by default, or the path the user gives.
+1. Identify the target root. By default, scan `C:\Users`, `C:\Program Files`, and `C:\Program Files (x86)`, or scan the path the user gives.
 2. Run the bundled read-only scanner:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "<skill-dir>\scripts\scan-c-users.ps1" -Root "C:\Users" -MinGB 0.1
+powershell -NoProfile -ExecutionPolicy Bypass -File "<skill-dir>\scripts\scan-c-users.ps1" -MinGB 0.1
 ```
 
 3. If the user is focused on a specific folder, inspect that folder before recommending deletion:
@@ -57,6 +58,8 @@ Use these defaults when explaining recommendations:
 - `Documents\xwechat_files` and `AppData\Roaming\Tencent\xwechat`: WeChat files and data. Use WeChat storage management first; do not delete whole folders without explicit confirmation and backup awareness.
 - `WPSDrive` and `WPS Cloud Files`: cloud sync/offline files and cache. Use WPS cleanup first. Inspect hidden account folders before acting. Deleting a `cachedata` subfolder may be reasonable after WPS is closed and sync is complete; deleting an entire account folder is not the first choice.
 - Baidu Netdisk, Lark/Feishu, DingTalk, Tencent Meeting, browser folders, JetBrains folders: app data and caches. Prefer app-native cache cleanup or targeted cache folders, not entire app data folders.
+- `C:\Program Files` and `C:\Program Files (x86)`: installed programs and shared runtime files. Do not delete top-level app folders just because they are large. Recommend Windows uninstall, vendor uninstallers, or app-native cleanup. Only consider deleting leftovers after confirming the app was uninstalled and the exact folder is no longer needed.
+- Cache/log/temp folders under an installed app directory: medium risk. Ask first, close the app, and prefer app-native cleanup when available.
 
 ## Deletion Confirmation Standard
 

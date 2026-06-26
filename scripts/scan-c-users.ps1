@@ -1,5 +1,5 @@
 param(
-    [string]$Root = "$env:SystemDrive\Users",
+    [string[]]$Root,
     [double]$MinGB = 0.1,
     [int]$Top = 50
 )
@@ -24,6 +24,15 @@ function Get-PathAdvice {
 
     $p = $Path.ToLowerInvariant()
 
+    if ($p -match "^c:\\program files( \(x86\))?$") {
+        return @("high", "Do not directly delete", "Windows installed application root; inspect child folders instead.")
+    }
+    if ($p -match "^c:\\program files( \(x86\))?\\") {
+        if ($p -match "\\(cache|caches|temp|tmp|logs?)$") {
+            return @("medium", "Ask; prefer app cleanup first", "Application cache, temp, or log folder under Program Files.")
+        }
+        return @("high", "Do not directly delete; uninstall or use app cleanup", "Installed application files or app-managed data.")
+    }
     if ($p -match "\\all users$" -or $p -match "\\default user$" -or $p -match "\\default$" -or $p -match "\\public$" -or $p -match "\\administrator$") {
         return @("high", "Do not directly delete", "Windows profile, shared profile, or compatibility junction.")
     }
@@ -95,17 +104,40 @@ function New-ReportRow {
     }
 }
 
-if (-not (Test-Path -LiteralPath $Root)) {
-    Write-Error "Root path does not exist: $Root"
+if (-not $Root -or $Root.Count -eq 0) {
+    $Root = @(
+        "$env:SystemDrive\Users",
+        $env:ProgramFiles,
+        ${env:ProgramFiles(x86)}
+    )
+}
+
+$scanRoots = @()
+foreach ($entry in $Root) {
+    if ([string]::IsNullOrWhiteSpace($entry)) {
+        continue
+    }
+    if (Test-Path -LiteralPath $entry) {
+        $scanRoots += [System.IO.Path]::GetFullPath($entry).TrimEnd('\')
+    } else {
+        Write-Warning "Root path does not exist and will be skipped: $entry"
+    }
+}
+
+$scanRoots = $scanRoots | Sort-Object -Unique
+if (-not $scanRoots -or $scanRoots.Count -eq 0) {
+    Write-Error "No valid root paths to scan."
     exit 1
 }
 
 $rows = @()
 
-Get-ChildItem -LiteralPath $Root -Force -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-    $bytes = Get-FolderSizeBytes -Path $_.FullName
-    if (($bytes / 1GB) -ge $MinGB) {
-        $rows += New-ReportRow -Path $_.FullName -Bytes $bytes
+foreach ($scanRoot in $scanRoots) {
+    Get-ChildItem -LiteralPath $scanRoot -Force -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+        $bytes = Get-FolderSizeBytes -Path $_.FullName
+        if (($bytes / 1GB) -ge $MinGB) {
+            $rows += New-ReportRow -Path $_.FullName -Bytes $bytes
+        }
     }
 }
 
@@ -124,15 +156,27 @@ $knownTargets = @(
     "$env:USERPROFILE\AppData\Roaming\BaiduNetdisk",
     "$env:USERPROFILE\AppData\Roaming\baidu\BaiduNetdisk",
     "$env:USERPROFILE\AppData\Roaming\LarkShell",
-    "$env:USERPROFILE\AppData\Local\JetBrains"
+    "$env:USERPROFILE\AppData\Local\JetBrains",
+    "$env:ProgramFiles\Common Files",
+    "${env:ProgramFiles(x86)}\Common Files"
 )
 
-$rootFull = [System.IO.Path]::GetFullPath($Root).TrimEnd('\')
+function Test-UnderScanRoots {
+    param([string]$Path)
+
+    $targetFull = [System.IO.Path]::GetFullPath($Path).TrimEnd('\')
+    foreach ($scanRoot in $scanRoots) {
+        if ($targetFull.Equals($scanRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
+            $targetFull.StartsWith($scanRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $true
+        }
+    }
+    return $false
+}
 
 foreach ($target in $knownTargets) {
     if (Test-Path -LiteralPath $target) {
-        $targetFull = [System.IO.Path]::GetFullPath($target).TrimEnd('\')
-        if (-not ($targetFull.StartsWith($rootFull, [System.StringComparison]::OrdinalIgnoreCase))) {
+        if (-not (Test-UnderScanRoots -Path $target)) {
             continue
         }
         $bytes = Get-FolderSizeBytes -Path $target
