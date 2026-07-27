@@ -2,50 +2,62 @@
 
 ## 功能范围
 
-`cclean-skill` 用于安全扫描和清理 Windows C 盘存储空间，重点检查：
+`cclean-skill` 用于检查 Windows C 盘到底被什么占满，并在你确认后安全清理。
 
-- `C:\Users` 下占用空间较大的文件夹
-- `C:\Program Files` 下占用空间较大的软件目录
-- `C:\Program Files (x86)` 下占用空间较大的软件目录
-- `C:\ProgramData` 下的软件公共数据和缓存
-- `C:\Windows`、Windows 更新缓存、日志、组件存储等系统级占用
-- `pagefile.sys`、`swapfile.sys`、`hiberfil.sys` 等系统托管文件
-- `Downloads` 里的安装包，例如 `.exe`、`.msi`
-- WPS 云盘、本地缓存和离线文件
-- 微信 / xwechat 聊天文件、图片、视频和缓存
-- `AppData` 临时文件、软件缓存、崩溃日志
-- conda、pip、npm 等开发工具缓存和环境
+它会重点检查：
 
-默认只做只读扫描。任何删除动作都必须先展示路径、大小、风险和可能丢失的内容，并在用户明确同意后才能执行。`Program Files`、`Windows`、`ProgramData` 和系统托管文件默认不直接删除，优先建议卸载、Windows 存储设置、磁盘清理、DISM 或软件自带清理功能。
+- C 盘一级目录分别占了多少空间
+- `Users`、`Windows`、`Program Files`、`ProgramData` 等大目录
+- 大文件、重复文件、安装包和压缩包
+- 浏览器、聊天软件、办公软件和系统产生的缓存
+- CrashDumps、日志和临时文件
+- Windows 组件、还原点、休眠文件和虚拟内存等系统占用
+- conda、pip、npm、PyCharm 等开发环境和缓存
+
+默认先进行只读扫描，不会边扫描边删除。扫描后会说明每项内容是什么、占多大、删除后会失去什么，以及能不能重新生成。
+
+需要删除时，`cclean-skill` 会先列出准确路径和预计大小。只有你明确确认这一批文件后，它才会执行删除。它不会把项目目录、虚拟环境、已安装依赖或个人文件直接当成缓存。
 
 ## 安装命令
 
-Mac终端输入：
+电脑需要先安装 [Node.js](https://nodejs.org/)。
+
+Mac 终端输入：
 
 ```bash
 npx -y skills add Grace-han52/cclean-skill -g --all
 ```
 
-Windows终端输入：
+Windows 终端输入：
 
 ```powershell
 npx.cmd -y skills add Grace-han52/cclean-skill -g --all
 ```
 
-安装后重启或刷新你的 AI 编程工具（codex、claude code等）。
+安装完成后，重启或刷新 Codex、Claude Code 等 AI 编程工具。
+
+> 这个 skill 专门清理 Windows C 盘。Mac 可以安装，但不能在 Mac 上扫描 C 盘。
 
 ## 调用方式
 
-推荐调用：
+推荐直接输入：
 
 ```text
-$cclean-skill
+$cclean-skill 完整检查 C 盘，先只扫描，不要删除
 ```
 
-也可以输入：
+只想快速了解空间占用：
 
 ```text
-/ccs
+$cclean-skill 快速扫描 C 盘，只看主要目录
 ```
 
-说明：`/ccs` 是写在 skill 里的短别名。如果 Codex 客户端把未知斜杠命令拦截了，就使用 `$cclean-skill`。
+想检查得更仔细：
+
+```text
+$cclean-skill 深度检查 C 盘的大目录、大文件、重复文件和系统占用，先不要删除
+```
+
+在 Codex CLI 或 IDE 扩展中，也可以输入 `/skills`，然后选择 `cclean-skill`。
+
+扫描完成后，直接告诉它你想删除清单中的哪些项目。它会再次列出准确删除范围，等你确认后再执行。

@@ -1,4 +1,4 @@
 interface:
-  display_name: "Cclean Skill"
-  short_description: "Scan and safely clean large C drive storage."
-  default_prompt: "/ccs"
+  display_name: "cclean-skill"
+  short_description: "Audit and safely reclaim Windows C drive space."
+  default_prompt: "Use $cclean-skill to audit my Windows C drive, explain the major storage areas, and prepare a confirmation-based cleanup plan."

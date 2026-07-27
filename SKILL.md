@@ -1,89 +1,101 @@
 ---
 name: cclean-skill
-description: Safely scan and clean Windows C drive storage across C:\Users, C:\Program Files, C:\Program Files (x86), C:\ProgramData, C:\Windows system storage, pagefile/swap/hibernation files, Windows Update caches, Downloads installers, WPS Cloud Files, WeChat/xwechat files, AppData caches, conda/pip/npm caches, app caches, leftover application folders, and other large folders. Use when a user types /ccs, asks to free disk space, find what occupies C drive, decide what can be deleted, or clean Windows storage while requiring explicit user confirmation before deleting any file or folder.
+description: Audit and safely reclaim Windows C drive space with a read-only whole-drive ledger, recursive large-folder drill-down, large-file and duplicate detection, application-cache classification, explicit batch confirmation, guarded deletion, and post-clean verification. Use when the user explicitly invokes $cclean-skill, asks what occupies C:, wants to free disk space, requests a full storage audit, or wants to decide what can be deleted without losing personal files, application state, or development environments.
 ---
 
-# Cclean Skill
+# cclean-skill
 
-## Core Rules
-
-Treat this as a safety-first cleanup workflow for Windows user storage.
-
-- If the user types `/ccs`, treat it as a request to run this skill's C drive cleanup scan.
-- Default to read-only scanning. Do not delete, move, rename, or empty folders during discovery.
-- Show the user which folders or file groups are large, their size in GB, what they likely contain, whether direct deletion is appropriate, and the safer cleanup method.
-- Ask for explicit confirmation before every deletion action. The user must name or clearly approve the exact path or file group to delete in the current conversation.
-- Warn before deleting anything that may contain personal files, chat attachments, cloud sync data, unsynced files, development environments, browser profiles, or app configuration.
-- Prefer app-native cleanup commands for app-managed data: WeChat storage manager, WPS cloud cache cleanup, Baidu Netdisk cleanup, browser cache settings, `conda clean --all`, `conda env remove -n <env>`, `pip cache purge`, and `npm cache clean --force`.
-- Never directly delete broad system, program, or profile folders such as `C:\Users`, `C:\Program Files`, `C:\Program Files (x86)`, a whole user profile, `AppData`, `AppData\Local\Microsoft`, `AppData\Local\Packages`, `ProgramData`, `All Users`, `Default`, `Default User`, `Public`, `Documents`, `Desktop`, `Pictures`, or `Videos`.
-- Treat `Program Files` and `Program Files (x86)` as installed-application territory. Report large app folders, but prefer uninstallers, Windows Apps & features, vendor cleanup tools, or targeted app cache cleanup over direct folder deletion.
-- Treat `C:\Windows`, `C:\ProgramData`, `pagefile.sys`, `swapfile.sys`, `hiberfil.sys`, `C:\Windows\WinSxS`, and `C:\Windows\Installer` as report-only by default. Recommend Windows Storage settings, Disk Cleanup, DISM, power settings, or app uninstallers instead of manual deletion.
+Use a safety-first, evidence-driven workflow. Discovery is always read-only. Never infer that a large directory is disposable.
 
 ## Workflow
 
-1. Identify the target root. By default, scan `C:\Users`, `C:\Program Files`, `C:\Program Files (x86)`, `C:\ProgramData`, and system-level C drive storage indicators such as `C:\Windows`, Windows update caches, pagefile/swap/hibernation files, and installer caches. If the user gives a path, scan that path plus system indicators unless they explicitly ask not to.
-2. Run the bundled read-only scanner:
+1. Run the whole-drive audit:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "<skill-dir>\scripts\scan-c-users.ps1" -MinGB 0.1
+powershell -NoProfile -ExecutionPolicy Bypass -File "<skill-dir>\scripts\scan-c-drive.ps1" -Mode Audit -OutputFormat Json
 ```
 
-3. For an expensive deep system-size pass, use this only when the user explicitly asks why C drive usage is much larger than the normal scan explains:
+Use `-Mode Quick` only when the user asks for a fast overview. Use `-Mode DeepSystem` when the user explicitly asks to explain protected or Windows system usage. Deep mode still cannot replace elevated DISM or VSS analysis.
+
+2. Run cleanup-candidate discovery:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "<skill-dir>\scripts\scan-c-users.ps1" -MinGB 0.5 -DeepSystemSize $true
+powershell -NoProfile -ExecutionPolicy Bypass -File "<skill-dir>\scripts\find-cleanup-candidates.ps1" -Mode Audit -OutputFormat Json
 ```
 
-4. If the user is focused on a specific folder, inspect that folder before recommending deletion:
+3. Reconcile the results:
+
+- Report physical total, used, and free space.
+- Show the major root-level ledger.
+- Separate visible logical size from protected/unattributed space.
+- Warn that Windows hard links can make `WinSxS` and `System32` overlap.
+- Drill down until each large area has a recognizable owner or is explicitly marked unknown.
+- Read [references/decision-matrix.md](references/decision-matrix.md) when classifying candidates.
+
+4. Present candidates in four groups:
+
+- regenerable cache or crash diagnostics;
+- installed-software cleanup or uninstall;
+- personal/cloud/chat data requiring a user decision;
+- forbidden manual deletion.
+
+For every candidate include exact path or file group, size, evidence, what may be lost, whether it can be regenerated, required app closures, risk, and the preferred cleanup method.
+
+5. Create one exact batch plan after the user chooses targets. Ask once for confirmation of that batch. A new target requires a new confirmation.
+
+6. Use the guarded executor only after explicit approval:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "<skill-dir>\scripts\scan-c-users.ps1" -Root "C:\Users\Lenovo\WPS Cloud Files\.306382235" -MinGB 0.01
+powershell -NoProfile -ExecutionPolicy Bypass -File "<skill-dir>\scripts\invoke-approved-cleanup.ps1" `
+  -PlanPath "<utf8-json-plan>" `
+  -Execute `
+  -ConfirmationToken "DELETE-APPROVED-TARGETS"
 ```
 
-5. Present a concise table with:
+Run it without `-Execute` first when the plan is complex or includes medium-risk targets.
 
-- path or group
-- size in GB
-- likely contents
-- direct delete: yes, contents only, no, or app cleanup preferred
-- risk level
-- recommended action
+7. Verify after cleanup:
 
-6. Ask the user what to delete. For medium or high risk targets, ask about backup/sync status first.
-7. Delete only after explicit approval. If deletion is approved, close related apps first when relevant and prefer deleting contents of cache folders over deleting parent account or profile folders.
-8. Re-scan after cleanup and report space recovered.
+- confirm every target is empty or absent as intended;
+- confirm every named keep-copy or current version still exists;
+- report physical free space before and after;
+- report both target bytes removed and actual disk free-space increase;
+- disclose failures, locked files, and whether deletion bypassed the Recycle Bin.
 
-## Common Decisions
+## Non-Negotiable Safety Rules
 
-Use these defaults when explaining recommendations:
+- Never delete during scanning or candidate discovery.
+- Never directly delete broad roots, whole profiles, whole `AppData`, personal-library roots, `Program Files`, `ProgramData`, or Windows system roots.
+- Never manually delete `WinSxS`, `Windows\Installer`, `ProgramData\Package Cache`, `pagefile.sys`, `swapfile.sys`, or `hiberfil.sys`.
+- Never treat `.conda\envs`, `.venv`, `node_modules`, project folders, model files, or package installations as cache.
+- Explain that pip/npm caches are download caches, not installed dependencies. Preserve them when the user values offline rebuilds.
+- Run `conda clean --all --dry-run --json` before recommending Conda cleanup. A large `.conda\pkgs` directory is not sufficient evidence.
+- Prefer app-native storage cleanup for chat, cloud-sync, browser, IDE, WPS, and vendor-managed data.
+- Hash suspected duplicates before proposing deletion. Keep at least one verified copy unless the user explicitly approves deleting all copies.
+- Do not force-close an app with a visible window. Ask the user to save work and exit it.
+- Do not traverse or recursively delete through reparse points or junctions.
+- Treat direct deletion as bypassing the Recycle Bin and disclose that consequence.
 
-- `Downloads` installers (`*.exe`, `*.msi`): usually safe after the software is installed and the installer is no longer needed. Ask first.
-- `AppData\Local\Temp`: usually safe to delete contents after closing apps. Do not delete the `Temp` folder itself.
-- `CrashDumps`: safe to delete if the user does not need crash logs.
-- `pip`, `npm-cache`, `.conda\pkgs`: cache data. Prefer package-manager cleanup commands.
-- `.conda\envs`: development environments. Do not delete directly; ask which environments are still needed and prefer `conda env remove`.
-- `Documents\xwechat_files` and `AppData\Roaming\Tencent\xwechat`: WeChat files and data. Use WeChat storage management first; do not delete whole folders without explicit confirmation and backup awareness.
-- `WPSDrive` and `WPS Cloud Files`: cloud sync/offline files and cache. Use WPS cleanup first. Inspect hidden account folders before acting. Deleting a `cachedata` subfolder may be reasonable after WPS is closed and sync is complete; deleting an entire account folder is not the first choice.
-- Baidu Netdisk, Lark/Feishu, DingTalk, Tencent Meeting, browser folders, JetBrains folders: app data and caches. Prefer app-native cache cleanup or targeted cache folders, not entire app data folders.
-- `C:\Program Files` and `C:\Program Files (x86)`: installed programs and shared runtime files. Do not delete top-level app folders just because they are large. Recommend Windows uninstall, vendor uninstallers, or app-native cleanup. Only consider deleting leftovers after confirming the app was uninstalled and the exact folder is no longer needed.
-- Cache/log/temp folders under an installed app directory: medium risk. Ask first, close the app, and prefer app-native cleanup when available.
-- `C:\Windows`: system files. Do not delete manually. Default scans report common cleanup candidates and system files; use `-DeepSystemSize $true` only for slower explanatory sizing. For component store cleanup, recommend an elevated terminal with `Dism.exe /Online /Cleanup-Image /AnalyzeComponentStore` first, then `Dism.exe /Online /Cleanup-Image /StartComponentCleanup` only after confirmation.
-- `C:\Windows\SoftwareDistribution\Download`: Windows Update download cache. Prefer Windows Storage settings or Disk Cleanup. Manual deletion requires stopping update services and explicit confirmation.
-- `C:\Windows\WinSxS`: Windows component store. Never delete manually.
-- `C:\Windows\Installer`: Windows Installer cache. Never delete manually.
-- `C:\ProgramData`: shared app data. Inspect subfolders and prefer app cleanup or uninstallers. `Package Cache` may affect repair/uninstall and requires explicit warning.
-- `pagefile.sys`, `swapfile.sys`, `hiberfil.sys`: Windows-managed files. Do not delete directly; use virtual memory or hibernation settings such as `powercfg /hibernate off` only if the user understands the tradeoff.
+## Batch Confirmation
 
-## Deletion Confirmation Standard
+Before execution, state:
 
-Before any delete command, state:
+- exact targets and modes (`File`, `Contents`, or narrowly approved `Whole`);
+- estimated total size;
+- evidence supporting each target;
+- data or diagnostics that will be lost;
+- apps that must be closed;
+- exact copies or current versions that will remain.
 
-- the exact path or file group
-- estimated size
-- why it appears safe or risky
-- what may be lost
-- whether the app should be closed first
+Proceed only after the user clearly approves the listed batch. Broad instructions such as “clean everything” require a new exact batch proposal.
 
-Proceed only if the user replies with clear consent such as "delete this path", "delete these installers", or "yes, delete cachedata".
+## Administrator-Only System Analysis
 
-If the user gives broad approval such as "clean everything", do another confirmation listing the exact proposed targets before deleting.
+If protected usage remains unexplained, ask the user to run these read-only commands in an elevated terminal and provide the output:
+
+```powershell
+Dism.exe /Online /Cleanup-Image /AnalyzeComponentStore
+vssadmin list shadowstorage
+```
+
+Do not recommend `StartComponentCleanup`, restore-point deletion, hibernation changes, or virtual-memory changes until their tradeoffs are explained and separately confirmed.
