@@ -23,7 +23,7 @@
 Windows 电脑里的 Codex、Claude Code、Workbuddy 等任意 Agent 工具中直接输入：
 
 ```powershell
-npx.cmd -y skills add Grace-han52/cclean-skill -g --all
+npx skills add Grace-han52/cclean-skill
 ```
 
 安装完成后，重启或刷新 Codex、Claude Code、Workbuddy 该 Agent 工具。
