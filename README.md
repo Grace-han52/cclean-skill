@@ -26,9 +26,7 @@ Windows 终端输入：
 npx.cmd -y skills add Grace-han52/cclean-skill -g --all
 ```
 
-安装完成后，重启或刷新 Codex、Claude Code 等 AI 编程工具。
-
-> 这个 skill 专门清理 Windows C 盘。Mac 可以安装，但不能在 Mac 上扫描 C 盘。
+安装完成后，重启或刷新 Codex、Claude Code 等 Agent 编程工具。
 
 ## 调用方式
 
