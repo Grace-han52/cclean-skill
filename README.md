@@ -20,14 +20,6 @@
 
 ## 安装命令
 
-电脑需要先安装 [Node.js](https://nodejs.org/)。
-
-Mac 终端输入：
-
-```bash
-npx -y skills add Grace-han52/cclean-skill -g --all
-```
-
 Windows 终端输入：
 
 ```powershell
