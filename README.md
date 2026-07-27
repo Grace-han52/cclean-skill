@@ -20,13 +20,13 @@
 
 ## 安装命令
 
-Windows 电脑里的 Codex、Claude Code、Workbuddy 等任意 Agent 工具中直接输入：
+在 Codex、Claude Code、WorkBuddy 等支持 Agent Skills 的工具中输入：
 
 ```powershell
 npx skills add Grace-han52/cclean-skill
 ```
 
-安装完成后，重启或刷新 Codex、Claude Code、Workbuddy 该 Agent 工具。
+按照提示选择要安装到哪个 Agent，以及安装到当前项目还是全局。安装完成后，重启或刷新对应的 Agent 工具。
 
 ## 调用方式
 
